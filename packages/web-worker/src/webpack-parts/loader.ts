@@ -1,17 +1,14 @@
 import * as path from 'path';
 
 import type {LoaderContext, Compilation, Compiler, Chunk} from 'webpack';
-import {EntryPlugin, webworker, web} from 'webpack';
 
 import {WebWorkerPlugin} from './plugin';
 
 const NAME = 'WebWorker';
 
-const moduleWrapperCache = new Map<string, string | false>();
-
 export interface Options {
   name?: string;
-  wrapperModule?: string;
+  plain?: boolean;
 }
 
 export function pitch(this: LoaderContext<Options>, request: string) {
@@ -36,6 +33,8 @@ export function pitch(this: LoaderContext<Options>, request: string) {
     );
   }
 
+  const {EntryPlugin, webworker, web} = compiler.webpack;
+
   const plugin: WebWorkerPlugin | undefined = compiler.options.plugins.find(
     WebWorkerPlugin.isInstance,
   );
@@ -49,36 +48,21 @@ export function pitch(this: LoaderContext<Options>, request: string) {
   }
 
   const options: Options = this.getOptions();
-  const {name = String(plugin.workerId++), wrapperModule} = options;
+  const {name = String(plugin.workerId++), plain = false} = options;
 
   const virtualModule = path.join(
     path.dirname(resourcePath),
     `${path.basename(resourcePath, path.extname(resourcePath))}.worker.js`,
   );
 
-  let wrapperContent: string | undefined;
-
-  if (wrapperModule) {
-    this.addDependency(wrapperModule);
-    const cachedContent = moduleWrapperCache.get(wrapperModule);
-
-    if (typeof cachedContent === 'string') {
-      wrapperContent = cachedContent;
-    } else if (cachedContent == null) {
-      try {
-        // @ts-expect-error readFileSync is available here
-        wrapperContent = this.fs.readFileSync(wrapperModule).toString();
-        moduleWrapperCache.set(wrapperModule, wrapperContent ?? false);
-      } catch (error) {
-        moduleWrapperCache.set(wrapperModule, false);
-      }
-    }
-  }
-
-  if (wrapperContent) {
+  if (!plain) {
     plugin.virtualModules.writeModule(
       virtualModule,
-      wrapperContent.replace('{{WORKER_MODULE}}', JSON.stringify(request)),
+      `
+        import * as api from ${JSON.stringify(request)};
+        import {expose} from '@shopify/web-worker/worker';
+        expose(api);
+      `,
     );
   }
 
@@ -102,11 +86,9 @@ export function pitch(this: LoaderContext<Options>, request: string) {
   new web.FetchCompileWasmPlugin({
     mangleImports: (compiler.options.optimization! as any).mangleWasmImports,
   }).apply(workerCompiler);
-  new EntryPlugin(
-    context,
-    wrapperContent === null ? request : virtualModule,
-    name,
-  ).apply(workerCompiler);
+  new EntryPlugin(context, plain ? request : virtualModule, name).apply(
+    workerCompiler,
+  );
 
   for (const aPlugin of plugin.options.plugins || []) {
     aPlugin.apply(workerCompiler);
