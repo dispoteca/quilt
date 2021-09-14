@@ -95,5 +95,8 @@
       "require": "./worker.js",
       "esnext": "./worker.esnext"
     }
+  },
+  "scripts": {
+    "prepack": "yarn tsc --build && yarn skn build"
   }
 }
