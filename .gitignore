@@ -51,3 +51,11 @@ packages/*/*.js
 !packages/*/.eslintrc.js
 
 .package-build-cache
+
+# web-worker build artifacts
+!packages/web-worker/build
+packages/web-worker/build/*.tsbuildinfo
+packages/web-worker/build/*/tests
+!packages/web-worker/*.js
+!packages/web-worker/*.mjs
+!packages/web-worker/*.esnext

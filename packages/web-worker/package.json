@@ -97,6 +97,6 @@
     }
   },
   "scripts": {
-    "prepack": "yarn tsc --build && yarn skn build"
+    "build": "yarn tsc --build && yarn skn build"
   }
 }

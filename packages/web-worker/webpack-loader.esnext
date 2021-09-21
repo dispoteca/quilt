@@ -1,0 +1,2 @@
+export * from "./build\\esnext\\webpack-parts\\loader.esnext";
+export {default} from "./build\\esnext\\webpack-parts\\loader.esnext";
